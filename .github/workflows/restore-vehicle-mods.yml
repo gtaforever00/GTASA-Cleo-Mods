@@ -34,13 +34,13 @@ jobs:
       - name: Copy source files
         shell: powershell
         run: |
+          New-Item -Name "output" -ItemType Directory | Out-Null
           Copy-Item -Path .\LICENSE -Destination output\
           Copy-Item -Path ".\Restore Vehicle Mods\*" -Destination output\
       
       - name: Compile RestoreVehicleMods cleo
         shell: powershell
         run: |
-          New-Item -Name "output" -ItemType Directory | Out-Null
           cd sannybuilder
           .\sanny.exe --compile ..\output\RestoreVehicleMods.txt ..\output\RestoreVehicleMods.csa --game sa_mobile -o Compiler::AddExtraInfo 0
           cd ..
