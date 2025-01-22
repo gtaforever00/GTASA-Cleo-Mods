@@ -1,0 +1,206 @@
+/*
+Copyright (C) 2025 gtaforever00
+
+This program is free software: you can redistribute it and/or modify 
+it under the terms of the GNU General Public License as published by 
+the Free Software Foundation, either version 3 of the License, or 
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful, 
+but WITHOUT ANY WARRANTY; without even the implied warranty of 
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License 
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+{$CLEO .csa}
+nop
+
+
+:RestoreVehicleMods
+script_name 'RestoreMods'
+
+const
+    iniPath = "gfr/restoreVehicle.ini"
+end
+
+int gameTime
+int playerCarId
+int currentCar
+int playerCarModsApplied = 0
+int playerOnFoot = 0
+int playerInterior
+int index
+int modLabelAddr
+int currentModsAddr
+int carPart1, carPart2
+
+
+0AF0: playerCarId = read_int_from_ini_file iniPath "vehicle" "currentCar"
+
+:RestoreVehicleMods_start
+wait 0
+
+TIMERB = 0
+
+while TIMERB < 2000
+    if and
+        is_player_playing $PLAYER_CHAR
+        is_char_in_any_car $PLAYER_ACTOR
+    then
+        gosub @LoadVehicle
+        Break
+    end
+
+    wait 20
+end
+    
+while true
+    wait 10
+    
+    if is_hid_pressed 0x21
+    then
+        gosub @CompareVehicle
+    end
+    
+    playerInterior = get_area_visible
+    if and
+        is_player_playing $PLAYER_CHAR
+        is_char_in_any_car $PLAYER_ACTOR
+        playerInterior == 0
+    then
+        currentCar = get_car_char_is_using $PLAYER_ACTOR
+
+        int currentCarId
+        currentCarId = get_car_model currentCar
+        if not currentCarId == playerCarId
+        then
+            playerCarId = currentCarId
+            gosub @SaveVehicle
+        else
+            gosub @CompareVehicle
+        end
+        wait 5000
+    end
+end
+
+
+:CompareVehicle
+wait 0
+
+0DD0: currentModsAddr = get_label_addr @currentVehicleMods
+
+int dirty = 0
+
+index = 0
+while index < 16
+    carPart1 = get_current_car_mod currentCar {slot} index
+    0DD8: carPart2 = read_mem_addr currentModsAddr 4 0
+    
+    if carPart2 <> carPart1
+    then
+        //0ACD: show_text_highpriority 'Mods changed' time 500
+        dirty = 1
+    end
+    
+    currentModsAddr += 4
+    index += 1
+end
+
+if dirty == 1
+then
+    gosub @SaveVehicle
+end
+
+return
+
+
+:LoadVehicle
+wait 0
+currentCar = get_car_char_is_using $PLAYER_ACTOR
+
+0DD0: modLabelAddr = get_label_addr @vehicleModLabels
+0DD0: currentModsAddr = get_label_addr @currentVehicleMods
+wait 0
+
+index = 0
+while index < 16
+
+    0AF0: carPart1 = read_int_from_ini_file iniPath "vehicle" modLabelAddr
+    0DD9: write_memory currentModsAddr value carPart1 size 4 add_ib 0 protect 0
+
+    if
+        carPart1 > 0
+    then
+        wait 20
+        request_vehicle_mod carPart1
+        while not has_vehicle_mod_loaded carPart1
+            wait 0
+        end
+        06E7: carPart2 = add_car_component carPart1 to_car currentCar
+        wait 20
+        mark_vehicle_mod_as_no_longer_needed carPart1
+    end
+    
+    modLabelAddr += 6
+    currentModsAddr += 4
+    index += 1
+end
+
+//0ACD: show_text_highpriority 'Load Car' time 500
+return
+
+
+:SaveVehicle
+wait 0
+
+0AF1: write_ini_to_ini_file playerCarId iniPath "vehicle" "currentCar" 
+0DD0: modLabelAddr = get_label_addr @vehicleModLabels
+0DD0: currentModsAddr = get_label_addr @currentVehicleMods
+wait 0
+
+index = 0
+while index < 16
+    carPart1 = get_current_car_mod currentCar {slot} index
+    0AF1: write_ini_to_ini_file carPart1 iniPath "vehicle" modLabelAddr
+    0DD9: write_memory currentModsAddr value carPart1 size 4 add_ib 0 protect 0
+    modLabelAddr += 6
+    currentModsAddr += 4
+    index += 1
+    wait 10
+end
+
+//0ACD: show_text_highpriority 'Save Car' time 500
+return
+
+
+terminate_this_script
+
+
+:vehicleModLabels
+hex
+    "mod00" 00
+    "mod01" 00
+    "mod02" 00
+    "mod03" 00
+    "mod04" 00
+    "mod05" 00
+    "mod06" 00
+    "mod07" 00
+    "mod08" 00
+    "mod09" 00
+    "mod10" 00
+    "mod11" 00
+    "mod12" 00
+    "mod13" 00
+    "mod14" 00
+    "mod15" 00
+end
+
+:currentVehicleMods
+hex
+    00(64)
+end
+
