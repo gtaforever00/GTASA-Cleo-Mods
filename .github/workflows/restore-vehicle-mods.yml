@@ -1,0 +1,37 @@
+---
+
+name: Restore Vehicle Mods
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  compile-restore-vehicle-mods:
+    name: Compile Restore Vehicle Mods
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: dorny/paths-filter@v3.0.2
+        id: filter
+        with:
+          filters: |
+            restoreVehicleMods:
+              - 'Restore Vehicle Mods/**'
+
+      - name: Download Sanny Builder
+        shell: powershell
+        run: |
+          Invoke-WebRequest "https://github.com/sannybuilder/dev/releases/download/v4.0.0/SannyBuilder-v4.0.0.zip" -Outfile sannybuilder.zip
+          Expand-7ZipArchive -Path .\sannybuilder.zip -DestinationPath .\sannybuilder
+      
+      - name: Compile RestoreVehicleMods cleo
+        shell: powershell
+        run: |
+          New-Item -Name "output" -ItemType Directory
+          .\sannybuilder\sanny.exe --compile "Restore Vehicle Mods\RestoreVehicleMods.txt" "output\RestoreVehicleMods.csa" --game sa_mobile --no-splash -o Compiler::AddExtraInfo 0 -o Compiler::CheckConditions 1 -o Compiler::CheckLocalVariables 1
