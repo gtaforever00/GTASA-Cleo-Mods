@@ -29,18 +29,21 @@ jobs:
         run: |
           Invoke-WebRequest "https://github.com/sannybuilder/dev/releases/download/v4.0.0/SannyBuilder-v4.0.0.zip" -Outfile sannybuilder.zip
           Expand-7ZipArchive -Path .\sannybuilder.zip -DestinationPath .\sannybuilder
+          Copy-Item -Path .\SASCM.AML.ini -Destination .\sannybuilder\data\sa_mobile
+
+      - name: Copy source files
+        shell: powershell
+        run: |
+          Copy-Item -Path .\LICENSE -Destination output\
+          Copy-Item -Path ".\Restore Vehicle Mods\*" -Destination output\
       
       - name: Compile RestoreVehicleMods cleo
         shell: powershell
         run: |
           New-Item -Name "output" -ItemType Directory | Out-Null
-          .\sannybuilder\sanny.exe --compile "Restore Vehicle Mods\RestoreVehicleMods.txt" "output\RestoreVehicleMods.csa" --game sa_mobile --no-splash -o Compiler::AddExtraInfo 0 -o Compiler::CheckConditions 1 -o Compiler::CheckLocalVariables 1
-
-      - name: Package artifacts
-        shell: powershell
-        run: |
-          Copy-Item -Path .\LICENSE -Destination output\
-          Copy-Item -Path ".\Restore Vehicle Mods\*" -Destination output\
+          cd sannybuilder
+          .\sanny.exe --compile ..\output\RestoreVehicleMods.txt ..\output\RestoreVehicleMods.csa --game sa_mobile -o Compiler::AddExtraInfo 0
+          cd ..
 
       - uses: actions/upload-artifact@v4
         with:
